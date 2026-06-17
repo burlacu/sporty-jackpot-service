@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: sporty-jackpot-service
+  profiles:
+    active: dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.sporty.jackpot: DEBUG
