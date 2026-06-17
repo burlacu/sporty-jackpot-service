@@ -7,13 +7,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "jackpot_contributions")
+@Table(name = "jackpot_rewards")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JackpotContribution {
+public class JackpotReward {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,13 +29,7 @@ public class JackpotContribution {
     private Long jackpotId;
 
     @Column(nullable = false, precision = 19, scale = 4)
-    private BigDecimal stakeAmount;
-
-    @Column(nullable = false, precision = 19, scale = 4)
-    private BigDecimal contributionAmount;
-
-    @Column(nullable = false, precision = 19, scale = 4)
-    private BigDecimal currentJackpotAmount;
+    private BigDecimal rewardAmount;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

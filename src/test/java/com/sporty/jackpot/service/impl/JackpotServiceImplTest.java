@@ -2,8 +2,9 @@ package com.sporty.jackpot.service.impl;
 
 import com.sporty.jackpot.dto.JackpotDTO;
 import com.sporty.jackpot.exception.JackpotNotFoundException;
+import com.sporty.jackpot.model.ContributionType;
 import com.sporty.jackpot.model.Jackpot;
-import com.sporty.jackpot.model.JackpotStatus;
+import com.sporty.jackpot.model.RewardType;
 import com.sporty.jackpot.repository.JackpotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,19 +36,19 @@ class JackpotServiceImplTest {
     void setUp() {
         jackpot = Jackpot.builder()
                 .id(1L)
-                .name("Super Jackpot")
-                .totalAmount(BigDecimal.ZERO)
-                .status(JackpotStatus.ACTIVE)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .initialPoolAmount(BigDecimal.valueOf(1000))
+                .currentPoolAmount(BigDecimal.valueOf(1000))
+                .contributionType(ContributionType.PERCENTAGE)
+                .rewardType(RewardType.FULL_POOL)
                 .build();
     }
 
     @Test
     void createJackpot_shouldReturnCreatedJackpotDTO() {
         JackpotDTO dto = JackpotDTO.builder()
-                .name("Super Jackpot")
-                .status(JackpotStatus.ACTIVE)
+                .initialPoolAmount(BigDecimal.valueOf(1000))
+                .contributionType(ContributionType.PERCENTAGE)
+                .rewardType(RewardType.FULL_POOL)
                 .build();
 
         when(jackpotRepository.save(any(Jackpot.class))).thenReturn(jackpot);
@@ -56,8 +56,8 @@ class JackpotServiceImplTest {
         JackpotDTO result = jackpotService.createJackpot(dto);
 
         assertThat(result).isNotNull();
-        assertThat(result.getName()).isEqualTo("Super Jackpot");
-        assertThat(result.getStatus()).isEqualTo(JackpotStatus.ACTIVE);
+        assertThat(result.getContributionType()).isEqualTo(ContributionType.PERCENTAGE);
+        assertThat(result.getRewardType()).isEqualTo(RewardType.FULL_POOL);
         verify(jackpotRepository, times(1)).save(any(Jackpot.class));
     }
 

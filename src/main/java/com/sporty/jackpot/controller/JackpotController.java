@@ -1,7 +1,6 @@
 package com.sporty.jackpot.controller;
 
 import com.sporty.jackpot.dto.JackpotDTO;
-import com.sporty.jackpot.model.JackpotStatus;
 import com.sporty.jackpot.service.JackpotService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +28,7 @@ public class JackpotController {
     }
 
     @GetMapping
-    public ResponseEntity<List<JackpotDTO>> getAllJackpots(
-            @RequestParam(required = false) JackpotStatus status) {
-        if (status != null) {
-            return ResponseEntity.ok(jackpotService.getJackpotsByStatus(status));
-        }
+    public ResponseEntity<List<JackpotDTO>> getAllJackpots() {
         return ResponseEntity.ok(jackpotService.getAllJackpots());
     }
 

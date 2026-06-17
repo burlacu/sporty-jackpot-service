@@ -2,7 +2,8 @@ package com.sporty.jackpot.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.jackpot.dto.JackpotDTO;
-import com.sporty.jackpot.model.JackpotStatus;
+import com.sporty.jackpot.model.ContributionType;
+import com.sporty.jackpot.model.RewardType;
 import com.sporty.jackpot.service.JackpotService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,15 +35,17 @@ class JackpotControllerTest {
     @Test
     void createJackpot_shouldReturn201() throws Exception {
         JackpotDTO request = JackpotDTO.builder()
-                .name("Mega Jackpot")
-                .status(JackpotStatus.ACTIVE)
+                .initialPoolAmount(BigDecimal.valueOf(1000))
+                .contributionType(ContributionType.PERCENTAGE)
+                .rewardType(RewardType.FULL_POOL)
                 .build();
 
         JackpotDTO response = JackpotDTO.builder()
                 .id(1L)
-                .name("Mega Jackpot")
-                .totalAmount(BigDecimal.ZERO)
-                .status(JackpotStatus.ACTIVE)
+                .initialPoolAmount(BigDecimal.valueOf(1000))
+                .currentPoolAmount(BigDecimal.valueOf(1000))
+                .contributionType(ContributionType.PERCENTAGE)
+                .rewardType(RewardType.FULL_POOL)
                 .build();
 
         when(jackpotService.createJackpot(any(JackpotDTO.class))).thenReturn(response);
@@ -52,17 +55,18 @@ class JackpotControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Mega Jackpot"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.contributionType").value("PERCENTAGE"))
+                .andExpect(jsonPath("$.rewardType").value("FULL_POOL"));
     }
 
     @Test
     void getAllJackpots_shouldReturn200WithList() throws Exception {
         JackpotDTO dto = JackpotDTO.builder()
                 .id(1L)
-                .name("Mega Jackpot")
-                .totalAmount(BigDecimal.TEN)
-                .status(JackpotStatus.ACTIVE)
+                .initialPoolAmount(BigDecimal.valueOf(1000))
+                .currentPoolAmount(BigDecimal.valueOf(1100))
+                .contributionType(ContributionType.FIXED)
+                .rewardType(RewardType.FULL_POOL)
                 .build();
 
         when(jackpotService.getAllJackpots()).thenReturn(List.of(dto));
@@ -70,14 +74,12 @@ class JackpotControllerTest {
         mockMvc.perform(get("/api/v1/jackpots"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Mega Jackpot"));
+                .andExpect(jsonPath("$[0].contributionType").value("FIXED"));
     }
 
     @Test
-    void createJackpot_withMissingName_shouldReturn400() throws Exception {
-        JackpotDTO request = JackpotDTO.builder()
-                .status(JackpotStatus.ACTIVE)
-                .build();
+    void createJackpot_withMissingRequiredFields_shouldReturn400() throws Exception {
+        JackpotDTO request = JackpotDTO.builder().build();
 
         mockMvc.perform(post("/api/v1/jackpots")
                         .contentType(MediaType.APPLICATION_JSON)
