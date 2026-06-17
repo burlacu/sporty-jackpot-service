@@ -10,14 +10,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ContributionResponseDTO {
+public class JackpotRewardDTO {
 
     private Long id;
     private Long betId;
     private Long userId;
     private Long jackpotId;
-    private BigDecimal stakeAmount;
-    private BigDecimal contributionAmount;
-    private BigDecimal currentJackpotAmount;
+    private BigDecimal rewardAmount;
     private LocalDateTime createdAt;
 }

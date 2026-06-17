@@ -1,12 +1,11 @@
 package com.sporty.jackpot.dto;
 
-import com.sporty.jackpot.model.JackpotStatus;
-import jakarta.validation.constraints.NotBlank;
+import com.sporty.jackpot.model.ContributionType;
+import com.sporty.jackpot.model.RewardType;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -17,14 +16,16 @@ public class JackpotDTO {
 
     private Long id;
 
-    @NotBlank(message = "Jackpot name is required")
-    private String name;
+    @NotNull(message = "Initial pool amount is required")
+    private BigDecimal initialPoolAmount;
 
-    private BigDecimal totalAmount;
+    private BigDecimal currentPoolAmount;
 
-    @NotNull(message = "Jackpot status is required")
-    private JackpotStatus status;
+    @NotNull(message = "Contribution type is required")
+    private ContributionType contributionType;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    @NotNull(message = "Reward type is required")
+    private RewardType rewardType;
+
+    private String configuration;
 }

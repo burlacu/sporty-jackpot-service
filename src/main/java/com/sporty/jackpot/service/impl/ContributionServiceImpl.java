@@ -6,7 +6,6 @@ import com.sporty.jackpot.exception.ContributionNotFoundException;
 import com.sporty.jackpot.exception.JackpotNotFoundException;
 import com.sporty.jackpot.model.Jackpot;
 import com.sporty.jackpot.model.JackpotContribution;
-import com.sporty.jackpot.model.JackpotStatus;
 import com.sporty.jackpot.repository.ContributionRepository;
 import com.sporty.jackpot.repository.JackpotRepository;
 import com.sporty.jackpot.service.ContributionService;
@@ -30,18 +29,17 @@ public class ContributionServiceImpl implements ContributionService {
         Jackpot jackpot = jackpotRepository.findById(jackpotId)
                 .orElseThrow(() -> new JackpotNotFoundException("Jackpot not found with id: " + jackpotId));
 
-        if (jackpot.getStatus() != JackpotStatus.ACTIVE) {
-            throw new IllegalStateException("Contributions can only be made to ACTIVE jackpots");
-        }
+        jackpot.setCurrentPoolAmount(jackpot.getCurrentPoolAmount().add(requestDTO.getContributionAmount()));
+        jackpotRepository.save(jackpot);
 
         JackpotContribution contribution = JackpotContribution.builder()
-                .jackpot(jackpot)
+                .betId(requestDTO.getBetId())
                 .userId(requestDTO.getUserId())
-                .amount(requestDTO.getAmount())
+                .jackpotId(jackpotId)
+                .stakeAmount(requestDTO.getStakeAmount())
+                .contributionAmount(requestDTO.getContributionAmount())
+                .currentJackpotAmount(jackpot.getCurrentPoolAmount())
                 .build();
-
-        jackpot.setTotalAmount(jackpot.getTotalAmount().add(requestDTO.getAmount()));
-        jackpotRepository.save(jackpot);
 
         return toDTO(contributionRepository.save(contribution));
     }
@@ -76,10 +74,13 @@ public class ContributionServiceImpl implements ContributionService {
     private ContributionResponseDTO toDTO(JackpotContribution contribution) {
         return ContributionResponseDTO.builder()
                 .id(contribution.getId())
-                .jackpotId(contribution.getJackpot().getId())
+                .betId(contribution.getBetId())
                 .userId(contribution.getUserId())
-                .amount(contribution.getAmount())
-                .contributedAt(contribution.getContributedAt())
+                .jackpotId(contribution.getJackpotId())
+                .stakeAmount(contribution.getStakeAmount())
+                .contributionAmount(contribution.getContributionAmount())
+                .currentJackpotAmount(contribution.getCurrentJackpotAmount())
+                .createdAt(contribution.getCreatedAt())
                 .build();
     }
 }
