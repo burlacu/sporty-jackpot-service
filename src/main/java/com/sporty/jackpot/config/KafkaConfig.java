@@ -9,8 +9,8 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaConfig {
 
     @Bean
-    public NewTopic betEventsTopic() {
-        return TopicBuilder.name("bet.events")
+    public NewTopic jackpotBetsTopic() {
+        return TopicBuilder.name("jackpot-bets")
                 .partitions(3)
                 .replicas(1)
                 .build();
