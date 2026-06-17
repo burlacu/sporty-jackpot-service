@@ -2,15 +2,15 @@ package com.sporty.jackpot.service.impl;
 
 import com.sporty.jackpot.dto.BetAcknowledgement;
 import com.sporty.jackpot.dto.BetRequest;
-import com.sporty.jackpot.event.BetEvent;
+import com.sporty.jackpot.model.Bet;
 import com.sporty.jackpot.model.ProcessedBet;
+import com.sporty.jackpot.publisher.BetPublisher;
 import com.sporty.jackpot.repository.ProcessedBetRepository;
 import com.sporty.jackpot.service.BetService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +22,9 @@ import java.time.LocalDateTime;
 public class BetServiceImpl implements BetService {
 
     private static final Logger log = LoggerFactory.getLogger(BetServiceImpl.class);
-    private static final String BET_EVENTS_TOPIC = "bet.events";
 
     private final ProcessedBetRepository processedBetRepository;
-    private final KafkaTemplate<String, BetEvent> kafkaTemplate;
+    private final BetPublisher betPublisher;
 
     @Override
     public BetAcknowledgement processBet(BetRequest request) {
@@ -39,7 +38,7 @@ public class BetServiceImpl implements BetService {
             return buildAck(request.getBetId(), "ALREADY_PROCESSED");
         }
 
-        BetEvent event = BetEvent.builder()
+        Bet bet = Bet.builder()
                 .betId(request.getBetId())
                 .userId(request.getUserId())
                 .jackpotId(request.getJackpotId())
@@ -47,9 +46,8 @@ public class BetServiceImpl implements BetService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        kafkaTemplate.send(BET_EVENTS_TOPIC, String.valueOf(request.getBetId()), event);
+        betPublisher.publish(bet);
 
-        log.info("Bet published to Kafka: betId={}, jackpotId={}", request.getBetId(), request.getJackpotId());
         return buildAck(request.getBetId(), "ACCEPTED");
     }
 
