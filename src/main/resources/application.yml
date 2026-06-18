@@ -10,8 +10,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -19,6 +17,25 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+    consumer:
+      group-id: jackpot-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.sporty.jackpot.model
+        spring.json.value.default.type: com.sporty.jackpot.model.Bet
+
+jackpot:
+  contribution:
+    percentage-rate: 5
+    fixed-amount: 10
+    tiered-rates:
+      - threshold: 10000
+        rate: 10
+      - threshold: 50000
+        rate: 5
+      - rate: 2
 
 server:
   port: 8080
