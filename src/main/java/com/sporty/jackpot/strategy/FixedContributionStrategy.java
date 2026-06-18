@@ -1,20 +1,22 @@
 package com.sporty.jackpot.strategy;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
-/**
- * Contributes a fixed monetary amount per bet, regardless of bet size or pool size.
- * The fixed amount is currently a default constant; configuration-based values are a future concern.
- */
-@Component("FIXED")
+@Component
 public class FixedContributionStrategy implements ContributionStrategy {
 
-    private static final BigDecimal DEFAULT_FIXED_AMOUNT = BigDecimal.ONE;
+    private final BigDecimal fixedAmount;
+
+    public FixedContributionStrategy(
+            @Value("${jackpot.contribution.fixed-amount:10}") BigDecimal fixedAmount) {
+        this.fixedAmount = fixedAmount;
+    }
 
     @Override
-    public BigDecimal calculateContribution(BigDecimal betAmount, BigDecimal currentPool) {
-        return DEFAULT_FIXED_AMOUNT;
+    public BigDecimal calculateContribution(BigDecimal stakeAmount, BigDecimal currentPoolAmount) {
+        return fixedAmount;
     }
 }

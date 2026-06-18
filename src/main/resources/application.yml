@@ -26,6 +26,17 @@ spring:
         spring.json.trusted.packages: com.sporty.jackpot.model
         spring.json.value.default.type: com.sporty.jackpot.model.Bet
 
+jackpot:
+  contribution:
+    percentage-rate: 5
+    fixed-amount: 10
+    tiered-rates:
+      - threshold: 10000
+        rate: 10
+      - threshold: 50000
+        rate: 5
+      - rate: 2
+
 server:
   port: 8080
 

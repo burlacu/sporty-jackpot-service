@@ -1,21 +1,24 @@
 package com.sporty.jackpot.strategy;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-/**
- * Contributes a percentage of the bet amount to the jackpot pool.
- * The rate is currently a default constant; configuration-based values are a future concern.
- */
-@Component("PERCENTAGE")
+@Component
 public class PercentageContributionStrategy implements ContributionStrategy {
 
-    private static final BigDecimal DEFAULT_RATE = BigDecimal.valueOf(0.01);
+    private final BigDecimal rate;
+
+    public PercentageContributionStrategy(
+            @Value("${jackpot.contribution.percentage-rate:5}") BigDecimal rate) {
+        this.rate = rate;
+    }
 
     @Override
-    public BigDecimal calculateContribution(BigDecimal betAmount, BigDecimal currentPool) {
-        return betAmount.multiply(DEFAULT_RATE).setScale(4, RoundingMode.HALF_UP);
+    public BigDecimal calculateContribution(BigDecimal stakeAmount, BigDecimal currentPoolAmount) {
+        return stakeAmount.multiply(rate)
+                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
     }
 }
