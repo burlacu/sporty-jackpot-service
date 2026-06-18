@@ -1,7 +1,10 @@
 package com.sporty.jackpot.controller;
 
+import com.sporty.jackpot.dto.EvaluateRewardRequest;
+import com.sporty.jackpot.dto.EvaluateRewardResponse;
 import com.sporty.jackpot.dto.JackpotDTO;
 import com.sporty.jackpot.service.JackpotService;
+import com.sporty.jackpot.service.RewardEvaluationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,12 @@ import java.util.List;
 public class JackpotController {
 
     private final JackpotService jackpotService;
+    private final RewardEvaluationService rewardEvaluationService;
+
+    @PostMapping("/evaluate")
+    public ResponseEntity<EvaluateRewardResponse> evaluate(@Valid @RequestBody EvaluateRewardRequest request) {
+        return ResponseEntity.ok(rewardEvaluationService.evaluate(request));
+    }
 
     @PostMapping
     public ResponseEntity<JackpotDTO> createJackpot(@Valid @RequestBody JackpotDTO jackpotDTO) {

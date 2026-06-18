@@ -1,10 +1,13 @@
 package com.sporty.jackpot.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sporty.jackpot.dto.EvaluateRewardRequest;
+import com.sporty.jackpot.dto.EvaluateRewardResponse;
 import com.sporty.jackpot.dto.JackpotDTO;
 import com.sporty.jackpot.model.ContributionType;
 import com.sporty.jackpot.model.RewardType;
 import com.sporty.jackpot.service.JackpotService;
+import com.sporty.jackpot.service.RewardEvaluationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,6 +34,9 @@ class JackpotControllerTest {
 
     @MockBean
     private JackpotService jackpotService;
+
+    @MockBean
+    private RewardEvaluationService rewardEvaluationService;
 
     @Test
     void createJackpot_shouldReturn201() throws Exception {
@@ -75,6 +81,40 @@ class JackpotControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].contributionType").value("FIXED"));
+    }
+
+    @Test
+    void evaluate_winner_returns200WithWinnerResponse() throws Exception {
+        when(rewardEvaluationService.evaluate(any(EvaluateRewardRequest.class)))
+                .thenReturn(new EvaluateRewardResponse(true, new java.math.BigDecimal("15000.00")));
+
+        mockMvc.perform(post("/api/v1/jackpots/evaluate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new EvaluateRewardRequest(10L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value(true))
+                .andExpect(jsonPath("$.rewardAmount").value(15000.00));
+    }
+
+    @Test
+    void evaluate_noWinner_returns200WithNonWinnerResponse() throws Exception {
+        when(rewardEvaluationService.evaluate(any(EvaluateRewardRequest.class)))
+                .thenReturn(new EvaluateRewardResponse(false, java.math.BigDecimal.ZERO));
+
+        mockMvc.perform(post("/api/v1/jackpots/evaluate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new EvaluateRewardRequest(10L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value(false))
+                .andExpect(jsonPath("$.rewardAmount").value(0));
+    }
+
+    @Test
+    void evaluate_missingContributionId_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/jackpots/evaluate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
