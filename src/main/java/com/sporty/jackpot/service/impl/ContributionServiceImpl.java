@@ -9,10 +9,13 @@ import com.sporty.jackpot.model.JackpotContribution;
 import com.sporty.jackpot.repository.ContributionRepository;
 import com.sporty.jackpot.repository.JackpotRepository;
 import com.sporty.jackpot.service.ContributionService;
+import com.sporty.jackpot.strategy.ContributionStrategy;
+import com.sporty.jackpot.strategy.ContributionStrategyFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,13 +26,18 @@ public class ContributionServiceImpl implements ContributionService {
 
     private final ContributionRepository contributionRepository;
     private final JackpotRepository jackpotRepository;
+    private final ContributionStrategyFactory strategyFactory;
 
     @Override
     public ContributionResponseDTO addContribution(Long jackpotId, ContributionRequestDTO requestDTO) {
         Jackpot jackpot = jackpotRepository.findById(jackpotId)
                 .orElseThrow(() -> new JackpotNotFoundException("Jackpot not found with id: " + jackpotId));
 
-        jackpot.setCurrentPoolAmount(jackpot.getCurrentPoolAmount().add(requestDTO.getContributionAmount()));
+        ContributionStrategy strategy = strategyFactory.resolve(jackpot.getContributionType());
+        BigDecimal contributionAmount = strategy.calculateContribution(
+                requestDTO.getStakeAmount(), jackpot.getCurrentPoolAmount());
+
+        jackpot.setCurrentPoolAmount(jackpot.getCurrentPoolAmount().add(contributionAmount));
         jackpotRepository.save(jackpot);
 
         JackpotContribution contribution = JackpotContribution.builder()
@@ -37,7 +45,7 @@ public class ContributionServiceImpl implements ContributionService {
                 .userId(requestDTO.getUserId())
                 .jackpotId(jackpotId)
                 .stakeAmount(requestDTO.getStakeAmount())
-                .contributionAmount(requestDTO.getContributionAmount())
+                .contributionAmount(contributionAmount)
                 .currentJackpotAmount(jackpot.getCurrentPoolAmount())
                 .build();
 
