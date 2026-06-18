@@ -3,5 +3,7 @@ package com.sporty.jackpot.model;
 public enum RewardType {
     FIXED,
     FULL_POOL,
-    PERCENTAGE
+    PERCENTAGE,
+    FIXED_PROBABILITY,
+    TIERED_PROBABILITY
 }
