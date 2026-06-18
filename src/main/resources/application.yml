@@ -36,6 +36,18 @@ jackpot:
       - threshold: 50000
         rate: 5
       - rate: 2
+  reward:
+    fixed-amount: 500
+    percentage-rate: 50
+    probability-rate: 5
+    tiered-probabilities:
+      - threshold: 10000
+        probability-rate: 1
+      - threshold: 50000
+        probability-rate: 5
+      - threshold: 100000
+        probability-rate: 10
+      - probability-rate: 100
 
 server:
   port: 8080
