@@ -127,6 +127,21 @@ class RewardEvaluationServiceImplTest {
     }
 
     @Test
+    void evaluate_rewardPersistenceFails_poolResetDoesNotOccur() {
+        when(contributionRepository.findById(10L)).thenReturn(Optional.of(contribution));
+        when(jackpotRepository.findById(1L)).thenReturn(Optional.of(jackpot));
+        when(rewardStrategyFactory.resolve(any())).thenReturn(rewardStrategy);
+        when(rewardStrategy.evaluate(any())).thenReturn(RewardResult.win(new BigDecimal("15000.00")));
+        when(jackpotRewardRepository.save(any())).thenThrow(new RuntimeException("DB error"));
+
+        assertThatThrownBy(() -> service.evaluate(new EvaluateRewardRequest(10L)))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(jackpot.getCurrentPoolAmount()).isEqualByComparingTo("15000.00");
+        verify(jackpotRepository, never()).save(any());
+    }
+
+    @Test
     void evaluate_contributionNotFound_throwsContributionNotFoundException() {
         when(contributionRepository.findById(99L)).thenReturn(Optional.empty());
 
