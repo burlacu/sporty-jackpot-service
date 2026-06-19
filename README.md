@@ -12,6 +12,7 @@ Backend service for managing jackpot contributions and rewards. Built as part of
 - [Running the Service](#running-the-service)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
+- [Postman Collection](#postman-collection)
 - [Future Improvements](#future-improvements)
 
 ---
@@ -182,14 +183,54 @@ The service starts on `http://localhost:8080`.
 
 ### With Kafka
 
-```bash
-# Start Kafka (example using Docker)
-docker run -d --name kafka -p 9092:9092 \
-  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
-  bitnami/kafka:latest
+Start Kafka locally using Docker (KRaft mode, no Zookeeper needed):
 
-# Run the service
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092 mvn spring-boot:run
+**Linux / Git Bash / macOS:**
+
+```bash
+docker run -d \
+  --name kafka \
+  -p 9092:9092 \
+  -e KAFKA_NODE_ID=1 \
+  -e KAFKA_PROCESS_ROLES=broker,controller \
+  -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+  -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
+  -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
+  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+  -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
+  -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
+  -e KAFKA_LOG_DIRS=/tmp/kraft-combined-logs \
+  -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk \
+  apache/kafka:3.7.0
+```
+
+**Windows PowerShell:**
+
+```powershell
+docker run -d `
+  --name kafka `
+  -p 9092:9092 `
+  -e KAFKA_NODE_ID=1 `
+  -e KAFKA_PROCESS_ROLES=broker,controller `
+  -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 `
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 `
+  -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER `
+  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT `
+  -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 `
+  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 `
+  -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 `
+  -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 `
+  -e KAFKA_LOG_DIRS=/tmp/kraft-combined-logs `
+  -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk `
+  apache/kafka:3.7.0
+```
+
+Then run the service:
+
+```bash
+mvn spring-boot:run
 ```
 
 ### Production (PostgreSQL)
@@ -493,6 +534,44 @@ HTTP/1.1 400 Bad Request
 | `VALIDATION_ERROR`      | 400         | Bean validation failure                |
 | `INVALID_ARGUMENT`      | 400         | Unregistered strategy type or bad input|
 | `INTERNAL_ERROR`        | 500         | Unexpected server error                |
+
+---
+
+## Postman Collection
+
+A ready-to-use Postman collection is included at the root of the repository: **`sporty-jackpot.postman_collection.json`**.
+
+### Import
+
+In Postman: **Import** → select `sporty-jackpot.postman_collection.json`.
+
+The collection uses a `baseUrl` variable (default `http://localhost:8080/api/v1`). `jackpotId` and `contributionId` are captured automatically by test scripts as you run the flow.
+
+### Happy path (no Kafka required)
+
+Run requests in this order:
+
+1. **1.1 Create Jackpot** — creates a jackpot and captures `jackpotId`
+2. **3.1 Add Contribution** — directly adds a contribution and captures `contributionId`
+3. **4.1 Evaluate Reward** — evaluates win/loss; resets pool if won
+4. **4.2 Verify Pool After Evaluation** — confirms the pool state
+
+### Full Kafka flow
+
+Requires Kafka running at `localhost:9092` (see [With Kafka](#with-kafka)).
+
+1. **1.1 Create Jackpot**
+2. **2.1 Submit Bet** — publishes to `jackpot-bets` topic; consumer processes asynchronously
+3. **2.2 Submit Same Bet Again** — verifies idempotency (`ALREADY_PROCESSED`)
+4. **1.2 Get Jackpot** — confirm pool has grown after consumer processes the event
+5. **3.1 Add Contribution** — capture a `contributionId` for evaluation
+6. **4.1 Evaluate Reward**
+
+### Error cases
+
+Section **5** covers expected error responses: 404 for unknown jackpot/contribution, 400 for validation failures and missing fields.
+
+> **Note:** Always run **1.1 Create Jackpot** before any request that references `{{jackpotId}}`, otherwise the variable will be empty and the request will fail with a JSON parse error.
 
 ---
 

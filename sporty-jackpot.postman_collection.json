@@ -1,0 +1,583 @@
+{
+  "info": {
+    "name": "Sporty Jackpot Service",
+    "description": "Full end-to-end flow: create jackpot → submit bet → add contribution → evaluate reward.\n\nVariable `jackpotId` and `contributionId` are auto-captured by test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "jackpotId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contributionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Jackpots",
+      "item": [
+        {
+          "name": "1.1 Create Jackpot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('jackpotId', json.id);",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('jackpotId captured', () => pm.expect(json.id).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "postman-flow-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"initialPoolAmount\": 1000.00,\n  \"contributionType\": \"PERCENTAGE\",\n  \"rewardType\": \"TIERED_PROBABILITY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Get Jackpot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pool amount present', () => {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.currentPoolAmount).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Correlation-ID", "value": "postman-flow-001" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.3 List All Jackpots",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Update Jackpot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"initialPoolAmount\": 1000.00,\n  \"contributionType\": \"FIXED\",\n  \"rewardType\": \"FIXED_PROBABILITY\",\n  \"currentPoolAmount\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Revert Jackpot to PERCENTAGE + TIERED_PROBABILITY",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"initialPoolAmount\": 1000.00,\n  \"contributionType\": \"PERCENTAGE\",\n  \"rewardType\": \"TIERED_PROBABILITY\",\n  \"currentPoolAmount\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Bet Ingestion (Kafka Flow)",
+      "description": "Submits a bet via HTTP. The service saves a ProcessedBet record and publishes to the jackpot-bets Kafka topic. BetConsumer picks it up and calls ContributionService. Requires Kafka running at localhost:9092.",
+      "item": [
+        {
+          "name": "2.1 Submit Bet (new)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is ACCEPTED', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('ACCEPTED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "postman-flow-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"betId\": 1001,\n  \"userId\": 7,\n  \"jackpotId\": {{jackpotId}},\n  \"amount\": 200.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bets",
+              "host": ["{{baseUrl}}"],
+              "path": ["bets"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Submit Same Bet Again (idempotency check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is ALREADY_PROCESSED', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('ALREADY_PROCESSED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"betId\": 1001,\n  \"userId\": 7,\n  \"jackpotId\": {{jackpotId}},\n  \"amount\": 200.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bets",
+              "host": ["{{baseUrl}}"],
+              "path": ["bets"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Contributions (Manual / Direct)",
+      "description": "Directly add a contribution without going through Kafka. Useful when Kafka is not running.",
+      "item": [
+        {
+          "name": "3.1 Add Contribution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('contributionId', json.id);",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('contributionId captured', () => pm.expect(json.id).to.be.a('number'));",
+                  "pm.test('Pool increased', () => {",
+                  "  pm.expect(json.currentJackpotAmount).to.be.above(1000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "postman-flow-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"betId\": 2001,\n  \"userId\": 7,\n  \"stakeAmount\": 100.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}/contributions",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}", "contributions"]
+            }
+          }
+        },
+        {
+          "name": "3.2 List Contributions for Jackpot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}/contributions",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}", "contributions"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Get Contribution by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contributions/{{contributionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["contributions", "{{contributionId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.4 List Contributions by User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/7/contributions",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "7", "contributions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Reward Evaluation",
+      "item": [
+        {
+          "name": "4.1 Evaluate Reward",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('winner field present', () => pm.expect(json.winner).to.be.a('boolean'));",
+                  "pm.test('rewardAmount present', () => pm.expect(json.rewardAmount).to.not.be.undefined);",
+                  "if (json.winner) {",
+                  "  console.log('WINNER! Reward amount: ' + json.rewardAmount);",
+                  "  console.log('Pool has been reset to initialPoolAmount.');",
+                  "} else {",
+                  "  console.log('No win this time. Pool unchanged.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Correlation-ID", "value": "postman-flow-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": {{contributionId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/evaluate",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "evaluate"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Verify Pool After Evaluation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pool amount present', () => {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.currentPoolAmount).to.be.a('number');",
+                  "  console.log('Current pool: ' + json.currentPoolAmount + ' (initial: ' + json.initialPoolAmount + ')');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Error Cases",
+      "item": [
+        {
+          "name": "5.1 Get Non-existent Jackpot (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error code JACKPOT_NOT_FOUND', () => {",
+                  "  pm.expect(pm.response.json().errorCode).to.eql('JACKPOT_NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "99999"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Create Jackpot - Validation Error (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code VALIDATION_ERROR', () => {",
+                  "  pm.expect(pm.response.json().errorCode).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"initialPoolAmount\": -100,\n  \"contributionType\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots"]
+            }
+          }
+        },
+        {
+          "name": "5.3 Submit Bet - Missing Fields (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"betId\": 9999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bets",
+              "host": ["{{baseUrl}}"],
+              "path": ["bets"]
+            }
+          }
+        },
+        {
+          "name": "5.4 Evaluate Reward - Non-existent Contribution (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error code CONTRIBUTION_NOT_FOUND', () => {",
+                  "  pm.expect(pm.response.json().errorCode).to.eql('CONTRIBUTION_NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": 99999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/evaluate",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "evaluate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Cleanup",
+      "item": [
+        {
+          "name": "6.1 Delete Jackpot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jackpots/{{jackpotId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jackpots", "{{jackpotId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
